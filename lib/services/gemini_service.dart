@@ -120,11 +120,15 @@ Separate each activity with a blank line. Only output the activities in the form
     final activityBlocks = text.trim().split('\n\n');
     List<Activity> activities = [];
     List<Activity> fallbackActivities = [];
+    Map<String, Map<String, double>> geoCache = {};
     for (int i = 0; i < activityBlocks.length; i++) {
       final lines = activityBlocks[i].split('\n');
       String title = '';
       String address = '';
       String place = '';
+      String city = '';
+      String state = '';
+      String country = '';
       for (final line in lines) {
         if (line.startsWith('Activity:')) {
           title = line.replaceFirst('Activity:', '').trim();
@@ -134,22 +138,42 @@ Separate each activity with a blank line. Only output the activities in the form
         } else if (line.startsWith('Address:')) {
           address = line.replaceFirst('Address:', '').trim();
           title += ' (' + address + ')';
+          // Try to extract city/state/country from address
+          final parts = address.split(',');
+          if (parts.length >= 4) {
+            city = parts[1].trim();
+            state = parts[2].trim();
+            country = parts[3].trim();
+          }
         }
       }
-      String geoQuery = address;
-      if (place.isNotEmpty) geoQuery = place + ', ' + address;
+      // Build a more detailed query for Nominatim
+      String geoQuery = '';
+      if (place.isNotEmpty) geoQuery += place + ', ';
+      geoQuery += address;
+      if (city.isNotEmpty) geoQuery += ', ' + city;
+      if (state.isNotEmpty) geoQuery += ', ' + state;
+      if (country.isNotEmpty) geoQuery += ', ' + country;
       double markerLat = lat;
       double markerLng = lng;
       bool geocoded = false;
-      if (geoQuery.isNotEmpty) {
-        final geoUrl = Uri.parse('https://nominatim.openstreetmap.org/search?format=json&q=${Uri.encodeComponent(geoQuery)}&addressdetails=1&limit=1');
+      // Use cache if available
+      if (geoCache.containsKey(geoQuery)) {
+        markerLat = geoCache[geoQuery]!['lat']!;
+        markerLng = geoCache[geoQuery]!['lng']!;
+        geocoded = true;
+      } else if (geoQuery.isNotEmpty) {
+        final geoUrl = Uri.parse('https://nominatim.openstreetmap.org/search?format=json&q=${Uri.encodeComponent(geoQuery)}&addressdetails=1&limit=3');
         final geoResp = await http.get(geoUrl, headers: {'User-Agent': 'geko-app'});
         if (geoResp.statusCode == 200) {
           final geoData = jsonDecode(geoResp.body);
           if (geoData is List && geoData.isNotEmpty) {
-            markerLat = double.tryParse(geoData[0]['lat'] ?? '') ?? lat;
-            markerLng = double.tryParse(geoData[0]['lon'] ?? '') ?? lng;
+            // Prefer the result with highest importance or closest to user
+            var best = geoData[0];
+            markerLat = double.tryParse(best['lat'] ?? '') ?? lat;
+            markerLng = double.tryParse(best['lon'] ?? '') ?? lng;
             geocoded = true;
+            geoCache[geoQuery] = {'lat': markerLat, 'lng': markerLng};
           }
         }
       }

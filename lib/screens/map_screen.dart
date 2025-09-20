@@ -144,6 +144,7 @@ class _MapScreenState extends State<MapScreen> {
       body: Stack(
         children: [
           PlatformMapWidget(
+            key: ValueKey(appState.activities.map((a) => '${a.lat},${a.lng}').join()),
             latitude: _userLocation!.latitude,
             longitude: _userLocation!.longitude,
             activities: appState.activities,
@@ -178,9 +179,8 @@ class _MapScreenState extends State<MapScreen> {
                   appState.goals,
                 );
                 setState(() {
-                  // Append new activities to the existing list
-                  appState.activities.addAll(nextActivities);
-                  appState.notifyListeners();
+                  // Replace activities with new results
+                  appState.setActivities(nextActivities);
                 });
               },
             ),
