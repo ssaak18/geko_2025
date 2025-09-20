@@ -121,6 +121,37 @@ Separate each activity with a blank line. Only output the activities in the form
     List<Activity> activities = [];
     List<Activity> fallbackActivities = [];
     Map<String, Map<String, double>> geoCache = {};
+    // Badge category mapping
+    Map<String, String> typeToCategory = {
+      'cafe': 'Cafe Explorer',
+      'park': 'Park Adventurer',
+      'museum': 'Museum Enthusiast',
+      'restaurant': 'Restaurant Critic',
+      'trail': 'Trailblazer',
+      'library': 'Library Scholar',
+      'beach': 'Beachcomber',
+      'fitness': 'Fitness Fanatic',
+      'gym': 'Fitness Fanatic',
+      'art': 'Art Lover',
+      'historic': 'Historic Site Seeker',
+      'site': 'Historic Site Seeker',
+      'hiking': 'Hiking Hero',
+      'bike': 'Biking Buff',
+      'biking': 'Biking Buff',
+      'run': 'Running Rookie',
+      'running': 'Running Rookie',
+      'climb': 'Climbing Champ',
+      'climbing': 'Climbing Champ',
+      'swim': 'Swimming Star',
+      'swimming': 'Swimming Star',
+      'shop': 'Shopping Specialist',
+      'shopping': 'Shopping Specialist',
+      'cinema': 'Cinema Fan',
+      'movie': 'Cinema Fan',
+      'zoo': 'Zoo Visitor',
+      'playground': 'Playground Pro',
+      'child': 'Playground Pro',
+    };
     for (int i = 0; i < activityBlocks.length; i++) {
       final lines = activityBlocks[i].split('\n');
       String title = '';
@@ -129,8 +160,10 @@ Separate each activity with a blank line. Only output the activities in the form
       String city = '';
       String state = '';
       String country = '';
+      String activityType = '';
       for (final line in lines) {
         if (line.startsWith('Activity:')) {
+          activityType = line.replaceFirst('Activity:', '').trim().toLowerCase();
           title = line.replaceFirst('Activity:', '').trim();
         } else if (line.startsWith('Place:')) {
           place = line.replaceFirst('Place:', '').trim();
@@ -147,7 +180,12 @@ Separate each activity with a blank line. Only output the activities in the form
           }
         }
       }
-      // Build a more detailed query for Nominatim
+      // Determine category
+      String category = typeToCategory.entries.firstWhere(
+        (e) => activityType.contains(e.key),
+        orElse: () => MapEntry('other', 'Other'),
+      ).value;
+      // Build a robust query for Nominatim
       String geoQuery = '';
       if (place.isNotEmpty) geoQuery += place + ', ';
       geoQuery += address;
@@ -163,17 +201,31 @@ Separate each activity with a blank line. Only output the activities in the form
         markerLng = geoCache[geoQuery]!['lng']!;
         geocoded = true;
       } else if (geoQuery.isNotEmpty) {
-        final geoUrl = Uri.parse('https://nominatim.openstreetmap.org/search?format=json&q=${Uri.encodeComponent(geoQuery)}&addressdetails=1&limit=3');
+        final geoUrl = Uri.parse('https://nominatim.openstreetmap.org/search?format=json&q=${Uri.encodeComponent(geoQuery)}&addressdetails=1&limit=5');
         final geoResp = await http.get(geoUrl, headers: {'User-Agent': 'geko-app'});
         if (geoResp.statusCode == 200) {
           final geoData = jsonDecode(geoResp.body);
           if (geoData is List && geoData.isNotEmpty) {
-            // Prefer the result with highest importance or closest to user
-            var best = geoData[0];
-            markerLat = double.tryParse(best['lat'] ?? '') ?? lat;
-            markerLng = double.tryParse(best['lon'] ?? '') ?? lng;
-            geocoded = true;
-            geoCache[geoQuery] = {'lat': markerLat, 'lng': markerLng};
+            // Select the result closest to the user's location
+            double minDist = double.infinity;
+            Map<String, dynamic>? best;
+            for (var result in geoData) {
+              double? resLat = double.tryParse(result['lat'] ?? '');
+              double? resLng = double.tryParse(result['lon'] ?? '');
+              if (resLat != null && resLng != null) {
+                double dist = ((lat - resLat) * (lat - resLat)) + ((lng - resLng) * (lng - resLng));
+                if (dist < minDist) {
+                  minDist = dist;
+                  best = result;
+                }
+              }
+            }
+            if (best != null) {
+              markerLat = double.tryParse(best['lat'] ?? '') ?? lat;
+              markerLng = double.tryParse(best['lon'] ?? '') ?? lng;
+              geocoded = true;
+              geoCache[geoQuery] = {'lat': markerLat, 'lng': markerLng};
+            }
           }
         }
       }
@@ -184,6 +236,7 @@ Separate each activity with a blank line. Only output the activities in the form
           lat: markerLat,
           lng: markerLng,
           goalId: goals.isNotEmpty ? goals[i % goals.length].id : '',
+          category: category,
         ));
       } else {
         // Prepare fallback activity at a nearby location
@@ -193,6 +246,7 @@ Separate each activity with a blank line. Only output the activities in the form
           lat: lat + 0.005 * (i + 1),
           lng: lng - 0.005 * (i + 1),
           goalId: goals.isNotEmpty ? goals[i % goals.length].id : '',
+          category: category,
         ));
       }
     }
@@ -210,6 +264,7 @@ Separate each activity with a blank line. Only output the activities in the form
         lat: lat + 0.01 * (i + 1),
         lng: lng - 0.01 * (i + 1),
         goalId: '',
+        category: 'Other',
       ));
     }
     return result;
