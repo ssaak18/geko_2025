@@ -6,6 +6,7 @@ class AppState extends ChangeNotifier {
   List<Goal> goals = [];
   List<Activity> activities = [];
   int selectedGoalIndex = -1;
+  Map<String, int> badgeProgress = {};
 
   void setGoals(List<Goal> newGoals) {
     goals = newGoals;
@@ -17,10 +18,17 @@ class AppState extends ChangeNotifier {
     notifyListeners();
   }
 
+  void addActivity(Activity activity) {
+    activities.add(activity);
+    notifyListeners();
+  }
+
   void completeActivity(Activity activity) {
-    final goal = goals.firstWhere((g) => g.id == activity.goalId);
+    final goal = goals.firstWhere((g) => g.id == activity.goalId, orElse: () => goals.isNotEmpty ? goals[0] : Goal(id: '', title: ''));
     goal.progress++;
     activities.remove(activity);
+    // Update badge progress
+    badgeProgress[activity.category] = (badgeProgress[activity.category] ?? 0) + 1;
     notifyListeners();
   }
 }

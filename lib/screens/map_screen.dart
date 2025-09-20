@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
-import 'package:google_maps_flutter/google_maps_flutter.dart';
+import 'platform_map_widget.dart';
 import 'package:provider/provider.dart';
 import '../state/app_state.dart';
+import '../models/goal.dart';
 import '../services/gemini_service.dart';
 import '../services/location_service.dart';
 import 'profile_screen.dart';
@@ -14,8 +15,7 @@ class MapScreen extends StatefulWidget {
 }
 
 class _MapScreenState extends State<MapScreen> {
-  GoogleMapController? _mapController;
-  LatLng? _userLocation;
+  dynamic _userLocation;
   bool _loading = true;
   String _errorMessage = '';
 
@@ -143,25 +143,12 @@ class _MapScreenState extends State<MapScreen> {
       appBar: AppBar(title: const Text("Explore Activities")),
       body: Stack(
         children: [
-          GoogleMap(
-            initialCameraPosition: CameraPosition(
-              target: _userLocation!,
-              zoom: 12,
-            ),
-            onMapCreated: (controller) => _mapController = controller,
-            myLocationEnabled: true,
-            myLocationButtonEnabled: true,
-            markers: appState.activities
-                .map((a) => Marker(
-                      markerId: MarkerId(a.id),
-                      position: LatLng(a.lat, a.lng),
-                      infoWindow: InfoWindow(
-                        title: a.title,
-                        snippet: 'Tap to complete this activity',
-                        onTap: () => appState.completeActivity(a),
-                      ),
-                    ))
-                .toSet(),
+          PlatformMapWidget(
+            key: ValueKey(appState.activities.map((a) => '${a.lat},${a.lng}').join()),
+            latitude: _userLocation!.latitude,
+            longitude: _userLocation!.longitude,
+            activities: appState.activities,
+            onActivityTap: (a) => appState.completeActivity(a),
           ),
           Positioned(
             bottom: 20,
@@ -173,6 +160,29 @@ class _MapScreenState extends State<MapScreen> {
                 context: context,
                 builder: (_) => const ProfileScreen(),
               ),
+            ),
+          ),
+          Positioned(
+            bottom: 20,
+            right: 20,
+            child: FloatingActionButton.extended(
+              heroTag: "regen_btn",
+              icon: const Icon(Icons.refresh),
+              label: const Text("Regenerate Activities"),
+              onPressed: () async {
+                final appState = Provider.of<AppState>(context, listen: false);
+                final gemini = GeminiService();
+                // Always use all goals for variety
+                final nextActivities = await gemini.suggestActivities(
+                  _userLocation!.latitude,
+                  _userLocation!.longitude,
+                  appState.goals,
+                );
+                setState(() {
+                  // Replace activities with new results
+                  appState.setActivities(nextActivities);
+                });
+              },
             ),
           ),
           // Show goals count
