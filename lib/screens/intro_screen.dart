@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 import '../services/gemini_service.dart';
+import '../services/location_service.dart';
+import '../models/goal.dart';
 import '../state/app_state.dart';
 import 'dart:math';
 
@@ -80,11 +83,30 @@ class _IntroScreenState extends State<IntroScreen> with TickerProviderStateMixin
 
   Future<void> _generateGoals() async {
     setState(() => _loading = true);
-    final gemini = GeminiService();
-    final goals = await gemini.generateGoals(_controller.text);
-    Provider.of<AppState>(context, listen: false).setGoals(goals);
-    setState(() => _loading = false);
-    Navigator.pushReplacementNamed(context, '/map');
+    final gemini = GeminiService(
+      useGeminiLocationVerifier: true,
+      verificationConfidenceThreshold: double.tryParse(dotenv.env['GEMINI_VERIFIER_CONF_THRESHOLD'] ?? '') ?? 0.5,
+    );
+    // Get user location
+    final locationResult = await LocationService.getCurrentLocation();
+    if (locationResult.isSuccess && locationResult.location != null) {
+      final genres = _controller.text.split(',').map((s) => s.trim()).where((s) => s.isNotEmpty).toList();
+      Provider.of<AppState>(context, listen: false).setPreferredGenres(genres);
+      final activities = await gemini.suggestActivities(
+        locationResult.location!.latitude,
+        locationResult.location!.longitude,
+        genres,
+      );
+      Provider.of<AppState>(context, listen: false).setActivities(activities);
+      setState(() => _loading = false);
+      Navigator.pushReplacementNamed(context, '/map');
+    } else {
+      setState(() => _loading = false);
+      // Optionally show error
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Could not get location.')),
+      );
+    }
   }
 
   void _addSuggestion(int index) {

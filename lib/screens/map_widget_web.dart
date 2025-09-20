@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:provider/provider.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 import '../state/app_state.dart';
 import '../services/gemini_service.dart';
 import 'package:flutter_map_marker_popup/flutter_map_marker_popup.dart';
@@ -408,11 +409,15 @@ class _MapWidgetState extends State<MapWidget> {
                             if (activity != null) {
                               appState.completeActivity(activity);
                               // Regenerate a new activity for this category
-                              final gemini = GeminiService();
+                              final gemini = GeminiService(
+                                useGeminiLocationVerifier: true,
+                                verificationConfidenceThreshold: double.tryParse(dotenv.env['GEMINI_VERIFIER_CONF_THRESHOLD'] ?? '') ?? 0.5,
+                              );
+                              final genres = appState.preferredGenres.isNotEmpty ? appState.preferredGenres : appState.goals.map((g) => g.title).toList();
                               final newActs = await gemini.suggestActivities(
                                 activity.lat,
                                 activity.lng,
-                                appState.goals,
+                                genres,
                               );
                               // Find a new activity in the same category
                               final next = newActs.firstWhere(

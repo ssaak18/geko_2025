@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'platform_map_widget.dart';
 import 'package:provider/provider.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 import '../state/app_state.dart';
 import '../models/goal.dart';
 import '../services/gemini_service.dart';
@@ -27,21 +28,7 @@ class _MapScreenState extends State<MapScreen> {
         _userLocation = result.location;
       });
 
-      // Get activities from Gemini API
-      final appState = Provider.of<AppState>(context, listen: false);
-      final gemini = GeminiService();
-      
-      try {
-        final activities = await gemini.suggestActivities(
-          result.location!.latitude,
-          result.location!.longitude,
-          appState.goals,
-        );
-        appState.setActivities(activities);
-      } catch (e) {
-        print("Error getting activities: $e");
-        // Continue without activities rather than failing completely
-      }
+      // Activities are already set from the landing page, no need to generate here
 
       setState(() => _loading = false);
     } else {
@@ -171,12 +158,15 @@ class _MapScreenState extends State<MapScreen> {
               label: const Text("Regenerate Activities"),
               onPressed: () async {
                 final appState = Provider.of<AppState>(context, listen: false);
-                final gemini = GeminiService();
+                final gemini = GeminiService(
+                  useGeminiLocationVerifier: true,
+                  verificationConfidenceThreshold: double.tryParse(dotenv.env['GEMINI_VERIFIER_CONF_THRESHOLD'] ?? '') ?? 0.5,
+                );
                 // Always use all goals for variety
                 final nextActivities = await gemini.suggestActivities(
                   _userLocation!.latitude,
                   _userLocation!.longitude,
-                  appState.goals,
+                  appState.preferredGenres.isNotEmpty ? appState.preferredGenres : appState.goals.map((g) => g.title).toList(),
                 );
                 setState(() {
                   // Replace activities with new results

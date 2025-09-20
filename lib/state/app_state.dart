@@ -5,6 +5,7 @@ import '../models/activity.dart';
 class AppState extends ChangeNotifier {
   List<Goal> goals = [];
   List<Activity> activities = [];
+  List<String> preferredGenres = [];
   int selectedGoalIndex = -1;
   Map<String, int> badgeProgress = {};
 
@@ -15,6 +16,11 @@ class AppState extends ChangeNotifier {
 
   void setActivities(List<Activity> newActivities) {
     activities = newActivities;
+    notifyListeners();
+  }
+
+  void setPreferredGenres(List<String> genres) {
+    preferredGenres = genres;
     notifyListeners();
   }
 
