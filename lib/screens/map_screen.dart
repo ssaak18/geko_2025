@@ -140,7 +140,7 @@ class _MapScreenState extends State<MapScreen> {
     }
 
     return Scaffold(
-      appBar: AppBar(title: const Text("Explore Activities")),
+      // appBar: AppBar(title: const Text("Explore Activities")),
       body: Stack(
         children: [
           PlatformMapWidget(
