@@ -7,7 +7,9 @@ class LocationService {
       // Check if location services are enabled
       bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
       if (!serviceEnabled) {
-        return LocationResult.error('Location services are disabled. Please enable location services.');
+        return LocationResult.error(
+          'Location services are disabled. Please enable location services.',
+        );
       }
 
       // Check location permissions
@@ -15,17 +17,22 @@ class LocationService {
       if (permission == LocationPermission.denied) {
         permission = await Geolocator.requestPermission();
         if (permission == LocationPermission.denied) {
-          return LocationResult.error('Location permissions are denied. Please allow location access.');
+          return LocationResult.error(
+            'Location permissions are denied. Please allow location access.',
+          );
         }
         // If permission is now granted, retry getting location ONCE
-        if (permission == LocationPermission.whileInUse || permission == LocationPermission.always) {
+        if (permission == LocationPermission.whileInUse ||
+            permission == LocationPermission.always) {
           // Recursive call, but only once
           return await getCurrentLocation();
         }
       }
 
       if (permission == LocationPermission.deniedForever) {
-        return LocationResult.error('Location permissions are permanently denied. Please enable location access in settings.');
+        return LocationResult.error(
+          'Location permissions are permanently denied. Please enable location access in settings.',
+        );
       }
 
       // Get current position
@@ -33,9 +40,10 @@ class LocationService {
         desiredAccuracy: LocationAccuracy.high,
         timeLimit: Duration(seconds: 10), // Add timeout
       );
-      
-      return LocationResult.success(LatLng(position.latitude, position.longitude));
-      
+
+      return LocationResult.success(
+        LatLng(position.latitude, position.longitude),
+      );
     } catch (e) {
       return LocationResult.error('Failed to get location: ${e.toString()}');
     }
@@ -73,11 +81,7 @@ class LocationResult {
   final LatLng? location;
   final String? errorMessage;
 
-  LocationResult.success(this.location) 
-      : isSuccess = true, 
-        errorMessage = null;
+  LocationResult.success(this.location) : isSuccess = true, errorMessage = null;
 
-  LocationResult.error(this.errorMessage) 
-      : isSuccess = false, 
-        location = null;
+  LocationResult.error(this.errorMessage) : isSuccess = false, location = null;
 }
