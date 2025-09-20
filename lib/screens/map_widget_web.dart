@@ -226,40 +226,22 @@ class _MapWidgetState extends State<MapWidget> {
   @override
   Widget build(BuildContext context) {
     final activityMarkers = widget.activities
-        .map<Marker>((a) => Marker(
-              point: latlng.LatLng(a.lat, a.lng),
-              width: 40,
-              height: 40,
-              child: Icon(Icons.location_on, color: Colors.red, size: 40),
-            ))
+        .map<Marker>(
+          (a) => Marker(
+            point: latlng.LatLng(a.lat, a.lng),
+            width: 40,
+            height: 40,
+            child: Icon(Icons.location_on, color: Colors.red, size: 40),
+          ),
+        )
         .toList();
-
 
     final userMarker = Marker(
       key: const ValueKey('user_marker'),
       point: latlng.LatLng(widget.latitude, widget.longitude),
       width: 44,
       height: 44,
-      child: GestureDetector(
-        onTap: () {
-          setState(() {
-            if (_userPopupVisible) {
-              _popupController.hideAllPopups();
-              _userPopupVisible = false;
-            } else {
-              final user = Marker(
-                point: latlng.LatLng(widget.latitude, widget.longitude),
-                width: 44,
-                height: 44,
-                child: const SizedBox.shrink(),
-              );
-              _popupController.showPopupsOnlyFor([user]);
-              _userPopupVisible = true;
-            }
-          });
-        },
-        child: Icon(Icons.person_pin_circle, color: Colors.blue, size: 44),
-      ),
+      child: Icon(Icons.person_pin_circle, color: Colors.blue, size: 44),
     );
 
     final markers = <Marker>[userMarker, ...activityMarkers];
@@ -284,7 +266,8 @@ class _MapWidgetState extends State<MapWidget> {
             popupDisplayOptions: PopupDisplayOptions(
               builder: (BuildContext context, Marker marker) {
                 // Hide user popup state if any other popup is shown
-                if (!(marker.point.latitude == widget.latitude && marker.point.longitude == widget.longitude)) {
+                if (!(marker.point.latitude == widget.latitude &&
+                    marker.point.longitude == widget.longitude)) {
                   if (_userPopupVisible) {
                     WidgetsBinding.instance.addPostFrameCallback((_) {
                       setState(() {
@@ -293,96 +276,142 @@ class _MapWidgetState extends State<MapWidget> {
                     });
                   }
                 }
-                // If user marker, show gecko profile
-                if (marker.point.latitude == widget.latitude && marker.point.longitude == widget.longitude) {
-                  final geckoImages = [
-                    'https://raw.githubusercontent.com/ssaak18/geko-assets/main/gecko1.png',
-                    'https://raw.githubusercontent.com/ssaak18/geko-assets/main/gecko2.png',
-                    'https://raw.githubusercontent.com/ssaak18/geko-assets/main/gecko3.png',
-                    'https://raw.githubusercontent.com/ssaak18/geko-assets/main/gecko4.png',
-                  ];
-                  final geckoUrl = (geckoImages..shuffle()).first;
-                  final screenSize = MediaQuery.of(context).size;
-                  final popupWidth = screenSize.width * 0.5;
-                  final popupHeight = screenSize.height * 0.25;
-                  final profileSize = popupHeight * 0.5;
-                  return Card(
-                    elevation: 8,
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                    child: Container(
-                      width: popupWidth,
-                      height: popupHeight,
-                      padding: const EdgeInsets.all(16),
-                      child: Row(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          // Profile picture and name (top left, ~1/6 of popup)
-                          Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              ClipOval(
-                                child: Image.network(
-                                  geckoUrl,
-                                  width: profileSize * 0.8,
-                                  height: profileSize * 0.8,
-                                  fit: BoxFit.cover,
-                                  errorBuilder: (context, error, stackTrace) => Icon(Icons.pets, size: profileSize * 0.8, color: Colors.green),
-                                ),
-                              ),
-                              const SizedBox(height: 8),
-                              const Text('Silly Gecko', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
-                            ],
-                          ),
-                          const SizedBox(width: 24),
-                          // Rest of the popup (badges, etc.)
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                const Text('Your Profile', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 22)),
-                                const SizedBox(height: 16),
-                                // Badges grid
-                                const Text('Achievements', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
-                                const SizedBox(height: 8),
-                                SizedBox(
-                                  height: 80,
-                                  child: ListView.separated(
-                                    scrollDirection: Axis.horizontal,
-                                    itemCount: badgeCategories.length,
-                                    separatorBuilder: (_, __) => const SizedBox(width: 12),
-                                    itemBuilder: (context, idx) {
-                                      final cat = badgeCategories[idx];
-                                      // For demo, always show bronze badge as collected
-                                      final tier = cat['tiers'][0];
-                                      final color = {
-                                        'Bronze': Colors.brown,
-                                        'Silver': Colors.grey,
-                                        'Gold': Colors.amber,
-                                        'Platinum': Colors.blueGrey,
-                                      }[tier['tier']] ?? Colors.black;
-                                      return Column(
-                                        children: [
-                                          Icon(cat['icon'], size: 32, color: color),
-                                          Text(tier['tier'], style: TextStyle(fontWeight: FontWeight.bold, color: color)),
-                                          Text(cat['name'], style: const TextStyle(fontSize: 10)),
-                                        ],
-                                      );
-                                    },
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  );
-                }
+                // // If user marker, show gecko profile
+                // if (marker.point.latitude == widget.latitude &&
+                //     marker.point.longitude == widget.longitude) {
+                //   final geckoImages = [
+                //     'https://raw.githubusercontent.com/ssaak18/geko-assets/main/gecko1.png',
+                //     'https://raw.githubusercontent.com/ssaak18/geko-assets/main/gecko2.png',
+                //     'https://raw.githubusercontent.com/ssaak18/geko-assets/main/gecko3.png',
+                //     'https://raw.githubusercontent.com/ssaak18/geko-assets/main/gecko4.png',
+                //   ];
+                //   final geckoUrl = (geckoImages..shuffle()).first;
+                //   final screenSize = MediaQuery.of(context).size;
+                //   final popupWidth = screenSize.width * 0.5;
+                //   final popupHeight = screenSize.height * 0.25;
+                //   final profileSize = popupHeight * 0.5;
+                //   return Card(
+                //     elevation: 8,
+                //     shape: RoundedRectangleBorder(
+                //       borderRadius: BorderRadius.circular(16),
+                //     ),
+                //     child: Container(
+                //       width: popupWidth,
+                //       height: popupHeight,
+                //       padding: const EdgeInsets.all(16),
+                //       child: Row(
+                //         crossAxisAlignment: CrossAxisAlignment.start,
+                //         children: [
+                //           // Profile picture and name (top left, ~1/6 of popup)
+                //           Column(
+                //             crossAxisAlignment: CrossAxisAlignment.start,
+                //             children: [
+                //               ClipOval(
+                //                 child: Image.network(
+                //                   geckoUrl,
+                //                   width: profileSize * 0.8,
+                //                   height: profileSize * 0.8,
+                //                   fit: BoxFit.cover,
+                //                   errorBuilder: (context, error, stackTrace) =>
+                //                       Icon(
+                //                         Icons.pets,
+                //                         size: profileSize * 0.8,
+                //                         color: Colors.green,
+                //                       ),
+                //                 ),
+                //               ),
+                //               const SizedBox(height: 8),
+                //               const Text(
+                //                 'Silly Gecko',
+                //                 style: TextStyle(
+                //                   fontWeight: FontWeight.bold,
+                //                   fontSize: 18,
+                //                 ),
+                //               ),
+                //             ],
+                //           ),
+                //           const SizedBox(width: 24),
+                //           // Rest of the popup (badges, etc.)
+                //           Expanded(
+                //             child: Column(
+                //               crossAxisAlignment: CrossAxisAlignment.start,
+                //               children: [
+                //                 const Text(
+                //                   'Your Profile1',
+                //                   style: TextStyle(
+                //                     fontWeight: FontWeight.bold,
+                //                     fontSize: 22,
+                //                   ),
+                //                 ),
+                //                 const SizedBox(height: 16),
+                //                 // Badges grid
+                //                 const Text(
+                //                   'Achievements',
+                //                   style: TextStyle(
+                //                     fontWeight: FontWeight.bold,
+                //                     fontSize: 18,
+                //                   ),
+                //                 ),
+                //                 const SizedBox(height: 8),
+                //                 SizedBox(
+                //                   height: 80,
+                //                   child: ListView.separated(
+                //                     scrollDirection: Axis.horizontal,
+                //                     itemCount: badgeCategories.length,
+                //                     separatorBuilder: (_, __) =>
+                //                         const SizedBox(width: 12),
+                //                     itemBuilder: (context, idx) {
+                //                       final cat = badgeCategories[idx];
+                //                       // For demo, always show bronze badge as collected
+                //                       final tier = cat['tiers'][0];
+                //                       final color =
+                //                           {
+                //                             'Bronze': Colors.brown,
+                //                             'Silver': Colors.grey,
+                //                             'Gold': Colors.amber,
+                //                             'Platinum': Colors.blueGrey,
+                //                           }[tier['tier']] ??
+                //                           Colors.black;
+                //                       return Column(
+                //                         children: [
+                //                           Icon(
+                //                             cat['icon'],
+                //                             size: 32,
+                //                             color: color,
+                //                           ),
+                //                           Text(
+                //                             tier['tier'],
+                //                             style: TextStyle(
+                //                               fontWeight: FontWeight.bold,
+                //                               color: color,
+                //                             ),
+                //                           ),
+                //                           Text(
+                //                             cat['name'],
+                //                             style: const TextStyle(
+                //                               fontSize: 10,
+                //                             ),
+                //                           ),
+                //                         ],
+                //                       );
+                //                     },
+                //                   ),
+                //                 ),
+                //               ],
+                //             ),
+                //           ),
+                //         ],
+                //       ),
+                //     ),
+                //   );
+                // }
                 // ...existing code for activity popups...
                 Activity? activity;
                 try {
                   activity = widget.activities.firstWhere(
-                    (a) => a.lat == marker.point.latitude && a.lng == marker.point.longitude,
+                    (a) =>
+                        a.lat == marker.point.latitude &&
+                        a.lng == marker.point.longitude,
                   );
                 } catch (e) {
                   activity = null;
@@ -397,11 +426,22 @@ class _MapWidgetState extends State<MapWidget> {
                       mainAxisSize: MainAxisSize.min,
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text(activity.title, style: const TextStyle(fontWeight: FontWeight.bold)),
+                        Text(
+                          activity.title,
+                          style: const TextStyle(fontWeight: FontWeight.bold),
+                        ),
                         const SizedBox(height: 8),
-                        Text('Location: (${activity.lat.toStringAsFixed(4)}, ${activity.lng.toStringAsFixed(4)})'),
+                        Text(
+                          'Location: (${activity.lat.toStringAsFixed(4)}, ${activity.lng.toStringAsFixed(4)})',
+                        ),
                         const SizedBox(height: 8),
-                        Text('Category: ${activity.category}', style: const TextStyle(fontSize: 14, color: Colors.blueGrey)),
+                        Text(
+                          'Category: ${activity.category}',
+                          style: const TextStyle(
+                            fontSize: 14,
+                            color: Colors.blueGrey,
+                          ),
+                        ),
                         const SizedBox(height: 12),
                         ElevatedButton(
                           onPressed: () async {
@@ -416,15 +456,19 @@ class _MapWidgetState extends State<MapWidget> {
                               );
                               // Find a new activity in the same category
                               final next = newActs.firstWhere(
-                                (a) => activity != null && a.category == activity.category,
-                                orElse: () => newActs.isNotEmpty ? newActs[0] : Activity(
-                                  id: 'none',
-                                  title: 'No activity found',
-                                  lat: activity?.lat ?? 0.0,
-                                  lng: activity?.lng ?? 0.0,
-                                  goalId: '',
-                                  category: activity?.category ?? 'Other',
-                                ),
+                                (a) =>
+                                    activity != null &&
+                                    a.category == activity.category,
+                                orElse: () => newActs.isNotEmpty
+                                    ? newActs[0]
+                                    : Activity(
+                                        id: 'none',
+                                        title: 'No activity found',
+                                        lat: activity?.lat ?? 0.0,
+                                        lng: activity?.lng ?? 0.0,
+                                        goalId: '',
+                                        category: activity?.category ?? 'Other',
+                                      ),
                               );
                               if (next.id != 'none') {
                                 appState.addActivity(next);

@@ -166,16 +166,198 @@ class _MapScreenState extends State<MapScreen> {
               ),
             ),
           ),
+          // Goals and Profile buttons in the top left
           Positioned(
-            bottom: 20,
+            top: 20,
             left: 20,
-            child: FloatingActionButton(
-              heroTag: "profile_btn",
-              child: const Icon(Icons.person),
-              onPressed: () => showModalBottomSheet(
-                context: context,
-                builder: (_) => const ProfileScreen(),
-              ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                FloatingActionButton(
+                  heroTag: "goals_btn",
+                  child: const Icon(Icons.flag),
+                  onPressed: () {
+                    showModalBottomSheet(
+                      context: context,
+                      builder: (_) => Container(
+                        padding: const EdgeInsets.all(24),
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Text(
+                              'Your Goals',
+                              style: TextStyle(
+                                fontSize: 22,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                            const SizedBox(height: 16),
+                            ...appState.goals
+                                .take(5)
+                                .map(
+                                  (g) => Padding(
+                                    padding: const EdgeInsets.symmetric(
+                                      vertical: 4,
+                                    ),
+                                    child: Text(
+                                      '• ' + g.title,
+                                      style: const TextStyle(fontSize: 18),
+                                    ),
+                                  ),
+                                ),
+                          ],
+                        ),
+                      ),
+                    );
+                  },
+                ),
+                const SizedBox(height: 16),
+                FloatingActionButton(
+                  heroTag: "profile_btn",
+                  child: const Icon(Icons.person),
+                  onPressed: () {
+                    // For web, show the same popup as the user marker
+                    // This uses a dialog for simplicity
+                    showDialog(
+                      context: context,
+                      builder: (context) {
+                        final geckoImages = [
+                          'https://raw.githubusercontent.com/ssaak18/geko-assets/main/gecko1.png',
+                          'https://raw.githubusercontent.com/ssaak18/geko-assets/main/gecko2.png',
+                          'https://raw.githubusercontent.com/ssaak18/geko-assets/main/gecko3.png',
+                          'https://raw.githubusercontent.com/ssaak18/geko-assets/main/gecko4.png',
+                        ];
+                        geckoImages.shuffle();
+                        final geckoUrl = geckoImages.first;
+                        final screenSize = MediaQuery.of(context).size;
+                        final popupWidth = screenSize.width * 0.5;
+                        final popupHeight = screenSize.height * 0.25;
+                        final profileSize = popupHeight * 0.5;
+                        return Dialog(
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(16),
+                          ),
+                          child: Container(
+                            width: popupWidth,
+                            height: popupHeight,
+                            padding: const EdgeInsets.all(16),
+                            child: Row(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    ClipOval(
+                                      child: Image.network(
+                                        geckoUrl,
+                                        width: profileSize * 0.8,
+                                        height: profileSize * 0.8,
+                                        fit: BoxFit.cover,
+                                        errorBuilder:
+                                            (context, error, stackTrace) =>
+                                                Icon(
+                                                  Icons.pets,
+                                                  size: profileSize * 0.8,
+                                                  color: Colors.green,
+                                                ),
+                                      ),
+                                    ),
+                                    const SizedBox(height: 8),
+                                    const Text(
+                                      'Silly Gecko',
+                                      style: TextStyle(
+                                        fontWeight: FontWeight.bold,
+                                        fontSize: 18,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                                const SizedBox(width: 24),
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      const Text(
+                                        'Your Profile',
+                                        style: TextStyle(
+                                          fontWeight: FontWeight.bold,
+                                          fontSize: 22,
+                                        ),
+                                      ),
+                                      const SizedBox(height: 16),
+                                      const Text(
+                                        'Achievements',
+                                        style: TextStyle(
+                                          fontWeight: FontWeight.bold,
+                                          fontSize: 18,
+                                        ),
+                                      ),
+                                      const SizedBox(height: 8),
+                                      SizedBox(
+                                        height: 80,
+                                        child: ListView.separated(
+                                          scrollDirection: Axis.horizontal,
+                                          itemCount: 4,
+                                          separatorBuilder: (_, __) =>
+                                              const SizedBox(width: 12),
+                                          itemBuilder: (context, idx) {
+                                            final icons = [
+                                              Icons.local_cafe,
+                                              Icons.park,
+                                              Icons.museum,
+                                              Icons.restaurant,
+                                            ];
+                                            final names = [
+                                              'Cafe Explorer',
+                                              'Park Adventurer',
+                                              'Museum Enthusiast',
+                                              'Restaurant Critic',
+                                            ];
+                                            final colors = [
+                                              Colors.brown,
+                                              Colors.green,
+                                              Colors.blueGrey,
+                                              Colors.redAccent,
+                                            ];
+                                            return Column(
+                                              children: [
+                                                Icon(
+                                                  icons[idx],
+                                                  size: 32,
+                                                  color: colors[idx],
+                                                ),
+                                                Text(
+                                                  'Bronze',
+                                                  style: TextStyle(
+                                                    fontWeight: FontWeight.bold,
+                                                    color: colors[idx],
+                                                  ),
+                                                ),
+                                                Text(
+                                                  names[idx],
+                                                  style: const TextStyle(
+                                                    fontSize: 10,
+                                                  ),
+                                                ),
+                                              ],
+                                            );
+                                          },
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        );
+                      },
+                    );
+                  },
+                ),
+              ],
             ),
           ),
           Positioned(
@@ -201,66 +383,7 @@ class _MapScreenState extends State<MapScreen> {
               },
             ),
           ),
-          // Show goals count
-          Positioned(
-            top: 20,
-            right: 20,
-            child: Container(
-              padding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(20),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black26,
-                    blurRadius: 4,
-                    offset: Offset(0, 2),
-                  ),
-                ],
-              ),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Icon(Icons.flag, color: Colors.blue, size: 16),
-                  SizedBox(width: 4),
-                  Text(
-                    '${appState.goals.length} Goals',
-                    style: TextStyle(fontWeight: FontWeight.bold),
-                  ),
-                ],
-              ),
-            ),
-          ),
-          // Show activities count
-          Positioned(
-            bottom: 80,
-            left: 20,
-            child: Container(
-              padding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(20),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black26,
-                    blurRadius: 4,
-                    offset: Offset(0, 2),
-                  ),
-                ],
-              ),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Icon(Icons.local_activity, color: Colors.green, size: 16),
-                  SizedBox(width: 4),
-                  Text(
-                    '${appState.activities.length} Activities',
-                    style: TextStyle(fontWeight: FontWeight.bold),
-                  ),
-                ],
-              ),
-            ),
-          ),
+          // (Goals and Activities numbers removed)
         ],
       ),
     );

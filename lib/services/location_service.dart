@@ -17,6 +17,11 @@ class LocationService {
         if (permission == LocationPermission.denied) {
           return LocationResult.error('Location permissions are denied. Please allow location access.');
         }
+        // If permission is now granted, retry getting location ONCE
+        if (permission == LocationPermission.whileInUse || permission == LocationPermission.always) {
+          // Recursive call, but only once
+          return await getCurrentLocation();
+        }
       }
 
       if (permission == LocationPermission.deniedForever) {
