@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:google_maps_flutter/google_maps_flutter.dart';
+import 'platform_map_widget.dart';
 import 'package:provider/provider.dart';
 import '../state/app_state.dart';
 import '../services/gemini_service.dart';
@@ -14,8 +14,7 @@ class MapScreen extends StatefulWidget {
 }
 
 class _MapScreenState extends State<MapScreen> {
-  GoogleMapController? _mapController;
-  LatLng? _userLocation;
+  dynamic _userLocation;
   bool _loading = true;
   String _errorMessage = '';
 
@@ -143,25 +142,11 @@ class _MapScreenState extends State<MapScreen> {
       appBar: AppBar(title: const Text("Explore Activities")),
       body: Stack(
         children: [
-          GoogleMap(
-            initialCameraPosition: CameraPosition(
-              target: _userLocation!,
-              zoom: 12,
-            ),
-            onMapCreated: (controller) => _mapController = controller,
-            myLocationEnabled: true,
-            myLocationButtonEnabled: true,
-            markers: appState.activities
-                .map((a) => Marker(
-                      markerId: MarkerId(a.id),
-                      position: LatLng(a.lat, a.lng),
-                      infoWindow: InfoWindow(
-                        title: a.title,
-                        snippet: 'Tap to complete this activity',
-                        onTap: () => appState.completeActivity(a),
-                      ),
-                    ))
-                .toSet(),
+          PlatformMapWidget(
+            latitude: _userLocation!.latitude,
+            longitude: _userLocation!.longitude,
+            activities: appState.activities,
+            onActivityTap: (a) => appState.completeActivity(a),
           ),
           Positioned(
             bottom: 20,
@@ -173,6 +158,22 @@ class _MapScreenState extends State<MapScreen> {
                 context: context,
                 builder: (_) => const ProfileScreen(),
               ),
+            ),
+          ),
+          Positioned(
+            bottom: 20,
+            right: 20,
+            child: FloatingActionButton.extended(
+              heroTag: "regen_btn",
+              icon: const Icon(Icons.refresh),
+              label: const Text("Regenerate Activities"),
+              onPressed: () {
+                setState(() {
+                  _loading = true;
+                  _errorMessage = '';
+                });
+                _getLocation();
+              },
             ),
           ),
           // Show goals count
