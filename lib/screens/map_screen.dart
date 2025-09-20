@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'platform_map_widget.dart';
 import 'package:provider/provider.dart';
 import '../state/app_state.dart';
+import '../models/goal.dart';
 import '../services/gemini_service.dart';
 import '../services/location_service.dart';
 import 'profile_screen.dart';
@@ -167,12 +168,20 @@ class _MapScreenState extends State<MapScreen> {
               heroTag: "regen_btn",
               icon: const Icon(Icons.refresh),
               label: const Text("Regenerate Activities"),
-              onPressed: () {
+              onPressed: () async {
+                final appState = Provider.of<AppState>(context, listen: false);
+                final gemini = GeminiService();
+                // Always use all goals for variety
+                final nextActivities = await gemini.suggestActivities(
+                  _userLocation!.latitude,
+                  _userLocation!.longitude,
+                  appState.goals,
+                );
                 setState(() {
-                  _loading = true;
-                  _errorMessage = '';
+                  // Append new activities to the existing list
+                  appState.activities.addAll(nextActivities);
+                  appState.notifyListeners();
                 });
-                _getLocation();
               },
             ),
           ),
