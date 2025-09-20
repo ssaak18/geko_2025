@@ -10,7 +10,7 @@ class GeminiService {
   Future<List<Goal>> generateGoals(String userInput) async {
     try {
       final url = Uri.parse(
-        "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=$apiKey",
+        "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=$apiKey",
       );
 
       final response = await http.post(
@@ -109,18 +109,18 @@ class GeminiService {
   Future<List<Activity>> suggestActivities(double lat, double lng, List<Goal> goals) async {
     // Build a prompt for Gemini to generate 3 local activities
   final prompt = """
-You are a local guide. Given the user's location (latitude: $lat, longitude: $lng), suggest 3 physical activities to do nearby. Each activity should:
+Imagine you are the greatest travel guide of all time. Genuinely, your knowledge of different places is unmatched. You know everything about the best things to do in any town, village, or city; and not just the popular tourist locations, you know all of the best downtown restaurants, all of the most niche upcoming events, every single scenic spot. No diamond in the rough passes your knowledge. Because you have read every instagram post, every online travel blog; nothing related to getting out of the house and experiencing the world has passed your careful eye. Whatever anyone has ever experienced and enjoyed, you know about. 
+This is my current location (latitude: $lat, longitude: $lng). Suggest 10 very specific, and interesting places to visit, activities to do nearby, or events to attend. Look for things to do or look at based on what is nearest to my current location, rather than based on their popularity. Share anything interesting, even if it’s small and random. I don’t want the generic travel experience. I want to truly experience the intricacies and peculiarities of this location. Each activity should:
   - Be a real place (restaurant, cafe, park, museum, etc.)
-  - Include the activity type, place name, and full address
-  - The address must include street address, city, state, and country
-  - Be a reasonable walking/driving distance from the user's location
+  - Be within the general location of my given coordinates.
   - Match the activity type to the place (e.g., hiking at a park, eating at a restaurant)
-  - The location marker should be placed at the activity's place, not the user's current location
+Again, you should be very specific. Don’t just give the address to a shopping mall, or city center, or any broad location such as that. Give me the specific shop, the specific trail header, the specific street someone took the photograph of their life. Provide addresses for these locations with this level of specificity. It is fine if the address is not up to date, please provide whichever address you know. 
 Format:
-Activity: <activity type>
+Activity: <activity description>
 Place: <place name>
 Address: <street address>, <city>, <state>, <country>
-Separate each activity with a blank line. Only output the activities in the format above.""";
+Separate each activity with a blank line. Only output the activities in the format above.
+""";
 
     final url = Uri.parse("https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=$apiKey");
     final response = await http.post(
