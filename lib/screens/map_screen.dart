@@ -21,7 +21,7 @@ class _MapScreenState extends State<MapScreen> {
 
   Future<void> _getLocation() async {
     final result = await LocationService.getCurrentLocation();
-    
+
     if (result.isSuccess && result.location != null) {
       setState(() {
         _userLocation = result.location;
@@ -30,7 +30,7 @@ class _MapScreenState extends State<MapScreen> {
       // Get activities from Gemini API
       final appState = Provider.of<AppState>(context, listen: false);
       final gemini = GeminiService();
-      
+
       try {
         final activities = await gemini.suggestActivities(
           result.location!.latitude,
@@ -61,7 +61,7 @@ class _MapScreenState extends State<MapScreen> {
   @override
   Widget build(BuildContext context) {
     final appState = Provider.of<AppState>(context);
-    
+
     if (_loading) {
       return const Scaffold(
         body: Center(
@@ -143,12 +143,28 @@ class _MapScreenState extends State<MapScreen> {
       // appBar: AppBar(title: const Text("Explore Activities")),
       body: Stack(
         children: [
+          // Map widget at the bottom
           PlatformMapWidget(
-            key: ValueKey(appState.activities.map((a) => '${a.lat},${a.lng}').join()),
+            key: ValueKey(
+              appState.activities.map((a) => '${a.lat},${a.lng}').join(),
+            ),
             latitude: _userLocation!.latitude,
             longitude: _userLocation!.longitude,
             activities: appState.activities,
             onActivityTap: (a) => appState.completeActivity(a),
+          ),
+          // Overlay gecko image above the map, but below all other UI
+          IgnorePointer(
+            child: Container(
+              width: double.infinity,
+              height: double.infinity,
+              decoration: const BoxDecoration(
+                image: DecorationImage(
+                  image: AssetImage('assets/images/gecko_normal.png'),
+                  fit: BoxFit.cover,
+                ),
+              ),
+            ),
           ),
           Positioned(
             bottom: 20,
