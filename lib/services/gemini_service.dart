@@ -9,8 +9,10 @@ class GeminiService {
 
   Future<List<Goal>> generateGoals(String userInput) async {
     try {
-      final url = Uri.parse("https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=$apiKey");
-      
+      final url = Uri.parse(
+        "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=$apiKey",
+      );
+
       final response = await http.post(
         url,
         headers: {"Content-Type": "application/json"},
@@ -18,10 +20,24 @@ class GeminiService {
           "contents": [
             {
               "parts": [
-                {"text": "Based on these user goals: '$userInput', generate exactly 5 specific, actionable life goals. Format each goal as a simple sentence on a new line. Do not include numbers, bullets, or extra formatting."}
-              ]
-            }
-          ]
+                {
+                  "text":
+                      "You are the very best life coach in the world," +
+                      "and the user needs advice on how to summarize all of their" +
+                      "plans into concrete life goals. Based on these user goals: '$userInput'," +
+                      "generate exactly 5 specific, actionable life goals that " +
+                      "encapsulate everything in the user goals. The goals should" +
+                      "only be active/positive actions; do not say something like" +
+                      "practice moderation. They should not be too specific but be" +
+                      "categories that allow for the person's travel agency to then" +
+                      "suggest activites related to them to help the user live a better" +
+                      "life. Make the list of goals the most helpful for the travel agency" +
+                      "planner. Format each goal as a simple sentence on a new line. Do not" +
+                      "include numbers, bullets, or extra formatting. ",
+                },
+              ],
+            },
+          ],
         }),
       );
 
@@ -34,10 +50,10 @@ class GeminiService {
       }
 
       final data = jsonDecode(response.body);
-      
+
       // Check if the response has the expected structure
-      if (data == null || 
-          data["candidates"] == null || 
+      if (data == null ||
+          data["candidates"] == null ||
           data["candidates"].isEmpty ||
           data["candidates"][0]["content"] == null ||
           data["candidates"][0]["content"]["parts"] == null ||
@@ -46,8 +62,10 @@ class GeminiService {
         return _getFallbackGoals();
       }
 
-      final text = data["candidates"][0]["content"]["parts"][0]["text"] as String;
-      final goalLines = text.split("\n")
+      final text =
+          data["candidates"][0]["content"]["parts"][0]["text"] as String;
+      final goalLines = text
+          .split("\n")
           .where((g) => g.trim().isNotEmpty)
           .map((g) => g.trim())
           .where((g) => g.isNotEmpty)
@@ -58,11 +76,17 @@ class GeminiService {
         return _getFallbackGoals();
       }
 
-      return goalLines.map((g) => Goal(
-        id: g.hashCode.toString(), 
-        title: g.replaceAll(RegExp(r'^[0-9]+\.?\s*'), '') // Remove any numbers at the start
-      )).toList();
-
+      return goalLines
+          .map(
+            (g) => Goal(
+              id: g.hashCode.toString(),
+              title: g.replaceAll(
+                RegExp(r'^[0-9]+\.?\s*'),
+                '',
+              ), // Remove any numbers at the start
+            ),
+          )
+          .toList();
     } catch (e) {
       print("Error generating goals: $e");
       return _getFallbackGoals();
@@ -73,13 +97,20 @@ class GeminiService {
     return [
       Goal(id: "1", title: "Learn a new skill this year"),
       Goal(id: "2", title: "Exercise regularly and stay healthy"),
-      Goal(id: "3", title: "Build stronger relationships with family and friends"),
+      Goal(
+        id: "3",
+        title: "Build stronger relationships with family and friends",
+      ),
       Goal(id: "4", title: "Advance in my career or education"),
       Goal(id: "5", title: "Practice mindfulness and personal growth"),
     ];
   }
 
-  Future<List<Activity>> suggestActivities(double lat, double lng, List<Goal> goals) async {
+  Future<List<Activity>> suggestActivities(
+    double lat,
+    double lng,
+    List<Goal> goals,
+  ) async {
     // For now, return activities based on the actual goals provided
     if (goals.isEmpty) {
       return [];
@@ -87,18 +118,20 @@ class GeminiService {
 
     // Create activities that relate to the user's actual goals
     List<Activity> activities = [];
-    
+
     for (int i = 0; i < goals.length && i < 3; i++) {
       final goal = goals[i];
       String activityTitle = _getActivityForGoal(goal.title, i);
-      
-      activities.add(Activity(
-        id: "${i + 1}",
-        title: activityTitle,
-        lat: lat + (0.01 * (i + 1)) * (i.isEven ? 1 : -1),
-        lng: lng + (0.01 * (i + 1)) * (i.isOdd ? 1 : -1),
-        goalId: goal.id,
-      ));
+
+      activities.add(
+        Activity(
+          id: "${i + 1}",
+          title: activityTitle,
+          lat: lat + (0.01 * (i + 1)) * (i.isEven ? 1 : -1),
+          lng: lng + (0.01 * (i + 1)) * (i.isOdd ? 1 : -1),
+          goalId: goal.id,
+        ),
+      );
     }
 
     return activities;
@@ -106,12 +139,13 @@ class GeminiService {
 
   String _getActivityForGoal(String goalTitle, int index) {
     final lowerGoal = goalTitle.toLowerCase();
-    
+
     if (lowerGoal.contains('learn') || lowerGoal.contains('skill')) {
       return "Visit the local library or community center";
     } else if (lowerGoal.contains('exercise') || lowerGoal.contains('health')) {
       return "Go for a walk in the nearby park";
-    } else if (lowerGoal.contains('relationship') || lowerGoal.contains('family')) {
+    } else if (lowerGoal.contains('relationship') ||
+        lowerGoal.contains('family')) {
       return "Visit a local cafe for quality time";
     } else if (lowerGoal.contains('career') || lowerGoal.contains('work')) {
       return "Attend a networking event or workshop";
