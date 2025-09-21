@@ -7,6 +7,7 @@ import '../models/goal.dart';
 import '../services/gemini_service.dart';
 import '../services/location_service.dart';
 import 'profile_screen.dart';
+import '../services/google_calendar_service.dart';
 
 class MapScreen extends StatefulWidget {
   const MapScreen({super.key});
@@ -19,6 +20,43 @@ class _MapScreenState extends State<MapScreen> {
   dynamic _userLocation;
   bool _loading = true;
   String _errorMessage = '';
+  GoogleCalendarService _calendarService = GoogleCalendarService();
+  List<Map<String, DateTime>>? _freeTimes;
+
+  Future<void> _loadFreeTimes() async {
+    final token = await _calendarService.signInAndGetToken();
+    if (token == null) {
+      print("Google Sign-In failed or canceled.");
+      return;
+    }
+
+    print("Google Sign-In succeeded. Token: $token");
+
+    final now = DateTime.now();
+    final weekLater = now.add(Duration(days: 7));
+
+    final busy = await _calendarService.fetchBusyTimes(token, now, weekLater);
+    final free = _calendarService.computeFreeTimes(
+      busy,
+      now,
+      now.add(Duration(hours: 24)),
+    );
+
+    setState(() {
+      _freeTimes = free;
+    });
+
+    // Print free times for debug
+    print("Free time slots:");
+    if (_freeTimes != null && _freeTimes!.isNotEmpty) {
+      for (var slot in _freeTimes!) {
+        print(
+            "- From ${slot['start']?.toLocal()} to ${slot['end']?.toLocal()}");
+      }
+    } else {
+      print("No free time slots found.");
+    }
+  }
 
   Future<void> _getLocation() async {
     final result = await LocationService.getCurrentLocation();
@@ -43,6 +81,7 @@ class _MapScreenState extends State<MapScreen> {
   void initState() {
     super.initState();
     _getLocation();
+    _loadFreeTimes();
   }
 
   @override
@@ -62,6 +101,41 @@ class _MapScreenState extends State<MapScreen> {
           ),
         ),
       );
+    }
+
+    List<Widget> _buildActivitiesSidebar(AppState appState) {
+      if (_freeTimes == null || _freeTimes!.isEmpty) return [Text("No free times")];
+
+      List<Widget> widgets = [];
+
+      for (var activity in appState.activities) {
+        // For simplicity, assume each activity takes 1 hour
+        final activityDuration = Duration(hours: 1);
+
+        bool fitsFreeTime = _freeTimes!.any((slot) {
+          final start = slot['start']!;
+          final end = slot['end']!;
+          return end.difference(start) >= activityDuration;
+        });
+
+        if (fitsFreeTime) {
+          widgets.add(Card(
+            child: ListTile(
+              title: Text(activity.title),
+              subtitle: Text("${activity.category}"),
+              onTap: () {
+                // Optionally center map on activity
+              },
+            ),
+          ));
+        }
+      }
+
+      if (widgets.isEmpty) {
+        widgets.add(const Text("No activities fit your free time"));
+      }
+
+      return widgets;
     }
 
     if (_errorMessage.isNotEmpty) {
@@ -153,6 +227,21 @@ class _MapScreenState extends State<MapScreen> {
               ),
             ),
           ),
+          Positioned(
+            top: 0,
+            left: 0,
+            bottom: 0,
+            width: 250, // sidebar width
+            child: Container(
+              color: Colors.white.withOpacity(0.9),
+              child: _freeTimes == null
+                  ? const Center(child: Text("Loading free times..."))
+                  : ListView(
+                      padding: const EdgeInsets.all(8),
+                      children: _buildActivitiesSidebar(appState),
+                    ),
+            ),
+),
           // Goals and Profile buttons in the top left
           Positioned(
             top: 20,
