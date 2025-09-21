@@ -269,19 +269,16 @@ class _MapScreenState extends State<MapScreen> {
                               ),
                             ),
                             const SizedBox(height: 16),
-                            ...appState.goals
-                                .take(5)
-                                .map(
-                                  (g) => Padding(
-                                    padding: const EdgeInsets.symmetric(
-                                      vertical: 4,
-                                    ),
-                                    child: Text(
-                                      '• ' + g.title,
-                                      style: const TextStyle(fontSize: 18),
-                                    ),
-                                  ),
+                            ...List.generate(appState.goals.length.clamp(0, 5), (i) {
+                              final g = appState.goals[i];
+                              return Padding(
+                                padding: const EdgeInsets.symmetric(vertical: 4),
+                                child: Text(
+                                  '• ' + g.title,
+                                  style: const TextStyle(fontSize: 18),
                                 ),
+                              );
+                            }),
                           ],
                         ),
                       ),
@@ -447,13 +444,19 @@ class _MapScreenState extends State<MapScreen> {
                 final appState = Provider.of<AppState>(context, listen: false);
                 final gemini = GeminiService(
                   useGeminiLocationVerifier: true,
-                  verificationConfidenceThreshold: double.tryParse(dotenv.env['GEMINI_VERIFIER_CONF_THRESHOLD'] ?? '') ?? 0.5,
+                  verificationConfidenceThreshold:
+                      double.tryParse(
+                        dotenv.env['GEMINI_VERIFIER_CONF_THRESHOLD'] ?? '',
+                      ) ??
+                      0.5,
                 );
                 // Always use all goals for variety
                 final nextActivities = await gemini.suggestActivities(
                   _userLocation!.latitude,
                   _userLocation!.longitude,
-                  appState.preferredGenres.isNotEmpty ? appState.preferredGenres : appState.goals.map((g) => g.title).toList(),
+                  appState.preferredGenres.isNotEmpty
+                      ? appState.preferredGenres
+                      : appState.goals.map((g) => g.title).toList(),
                 );
                 setState(() {
                   // Replace activities with new results
