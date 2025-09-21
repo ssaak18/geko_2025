@@ -37,4 +37,8 @@ class AppState extends ChangeNotifier {
     badgeProgress[activity.category] = (badgeProgress[activity.category] ?? 0) + 1;
     notifyListeners();
   }
+
+  int getBadgeProgress(String category) {
+    return badgeProgress[category] ?? 0;
+  }
 }

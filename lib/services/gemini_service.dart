@@ -127,7 +127,7 @@ class GeminiService {
   ) async {
     // Fallback/related place types for common themes
     final Map<String, List<String>> relatedTypes = {
-      'cooking school': [
+      'cooking': [
         'culinary school',
         'cooking class',
         'restaurant',
@@ -142,7 +142,7 @@ class GeminiService {
         'charity shop',
         'consignment store',
       ],
-      'garden center': ['plant nursery', 'garden shop', 'park'],
+      'garden': ['plant nursery', 'garden shop', 'park'],
       'art gallery': ['museum', 'art museum', 'exhibition'],
       'bookstore': ['library', 'book shop'],
       'playground': ['park', 'recreation area'],
@@ -152,7 +152,7 @@ class GeminiService {
     // 1. Use Gemini to generate 3 place types/categories only
     final prompt =
         """
-Suggest 3 unique, real-world place types or categories (such as 'park', 'cafe', 'museum', 'library', 'restaurant', 'garden center', 'music store', 'thrift store', 'farmers market', 'bookstore', 'art gallery', 'gym', 'beach', 'zoo', 'playground', etc.) that match these interests: ${genres.join(', ')}. Only output the place type or category, one per line. Do not include any organization names, place names, addresses, or extra text. Do not output things like 'community college' or 'YMCA'—use only generic place types that work with OpenStreetMap Nominatim search.
+Suggest 3 unique, real-world place types or categories (such as 'park', 'cafe', 'museum', 'library', 'restaurant', 'garden', 'music store', 'thrift store', 'farmers market', 'bookstore', 'art gallery', 'gym', 'beach', 'zoo', 'playground', etc.) that match these interests: ${genres.join(', ')}. Only output the place type or category, one per line. Do not include any organization names, place names, addresses, or extra text. Do not output things like 'community college' or 'YMCA'—use only generic place types that work with OpenStreetMap Nominatim search.
 """;
 
     final url = Uri.parse(
@@ -193,13 +193,13 @@ Suggest 3 unique, real-world place types or categories (such as 'park', 'cafe', 
     List<Activity> activities = [];
     // Guarantee 3 real, on-theme activities by broadening search if needed
     final Map<String, List<String>> broaderTypes = {
-      'cooking school': ['restaurant', 'food market', 'supermarket'],
+      'cooking': ['restaurant', 'food market', 'supermarket'],
       'museum': ['art gallery', 'exhibition', 'library'],
       'thrift store': ['market', 'shopping mall'],
       'playground': ['park', 'recreation area'],
       'zoo': ['animal park', 'wildlife park'],
       'music store': ['shopping mall', 'music venue'],
-      'garden center': ['park', 'nature reserve'],
+      'garden': ['park', 'nature reserve'],
       'bookstore': ['library', 'shopping mall'],
       'gym': ['fitness center', 'sports club'],
       // Add more as needed
@@ -359,7 +359,7 @@ Suggest 3 unique, real-world place types or categories (such as 'park', 'cafe', 
   ) async {
     // Fallback/related place types for common themes
     final Map<String, List<String>> relatedTypes = {
-      'cooking school': [
+      'cooking': [
         'culinary school',
         'cooking class',
         'restaurant',
@@ -374,7 +374,7 @@ Suggest 3 unique, real-world place types or categories (such as 'park', 'cafe', 
         'charity shop',
         'consignment store',
       ],
-      'garden center': ['plant nursery', 'garden shop', 'park'],
+      'garden': ['plant nursery', 'garden shop', 'park'],
       'art gallery': ['museum', 'art museum', 'exhibition'],
       'bookstore': ['library', 'book shop'],
       'playground': ['park', 'recreation area'],
@@ -446,7 +446,7 @@ Only output the place type or category, one per line. Do not include any organiz
       'playground': ['park', 'recreation area'],
       'zoo': ['animal park', 'wildlife park'],
       'music store': ['shopping mall', 'music venue'],
-      'garden center': ['park', 'nature reserve'],
+      'garden': ['park', 'nature reserve'],
       'bookstore': ['library', 'shopping mall'],
       'gym': ['fitness center', 'sports club'],
       // Add more as needed

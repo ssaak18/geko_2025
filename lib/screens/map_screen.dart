@@ -395,27 +395,43 @@ class _MapScreenState extends State<MapScreen> {
                                         height: 80,
                                         child: ListView.separated(
                                           scrollDirection: Axis.horizontal,
-                                          itemCount: 4,
+                                          itemCount: 8,
                                           separatorBuilder: (_, __) =>
                                               const SizedBox(width: 12),
                                           itemBuilder: (context, idx) {
                                             final icons = [
-                                              Icons.local_cafe,
-                                              Icons.park,
+                                              Icons.fastfood,
                                               Icons.museum,
-                                              Icons.restaurant,
+                                              Icons.energy_savings_leaf,
+                                              Icons.toys,
+                                              Icons.pest_control,
+                                              Icons.music_note,
+                                              Icons.local_florist,
+                                              Icons.book,
+                                              Icons.fitness_center
                                             ];
-                                            final names = [
-                                              'Cafe Explorer',
-                                              'Park Adventurer',
-                                              'Museum Enthusiast',
-                                              'Restaurant Critic',
+                                            final categories = [
+                                              'cooking',
+                                              'museum',
+                                              'thrift store',
+                                              'playground',
+                                              'zoo',
+                                              'music store'
+                                              'garden',
+                                              'bookstore',
+                                              'gym',
                                             ];
+                                            final names = ["Food Connoisseur", "Science Enthsusiast", "Eco Warrior", "Family Fun", "Animal Lover", "Music Aficionado", "Plant Parent", "Bookworm", "Fitness Fanatic"];
                                             final colors = [
-                                              Colors.brown,
-                                              Colors.green,
-                                              Colors.blueGrey,
-                                              Colors.redAccent,
+                                              const Color.fromARGB(255, 209, 163, 65),
+                                              const Color.fromARGB(255, 142, 189, 76),
+                                              const Color.fromARGB(255, 118, 167, 119),
+                                              const Color.fromARGB(255, 62, 160, 119),
+                                              const Color.fromARGB(255, 91, 153, 185),
+                                              const Color.fromARGB(255, 55, 97, 177),
+                                              const Color.fromARGB(255, 127, 107, 184),
+                                              const Color.fromARGB(255, 245, 130, 213),
+                                              const Color.fromARGB(255, 201, 87, 129)
                                             ];
                                             return Column(
                                               children: [
@@ -425,7 +441,7 @@ class _MapScreenState extends State<MapScreen> {
                                                   color: colors[idx],
                                                 ),
                                                 Text(
-                                                  'Bronze',
+                                                  'Level ' + appState.getBadgeProgress(categories[idx]).toString(),
                                                   style: TextStyle(
                                                     fontWeight: FontWeight.bold,
                                                     color: colors[idx],
