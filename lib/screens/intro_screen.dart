@@ -84,13 +84,29 @@ class _IntroScreenState extends State<IntroScreen>
     setState(() => _loading = true);
     final gemini = GeminiService(
       useGeminiLocationVerifier: true,
-      verificationConfidenceThreshold: double.tryParse(dotenv.env['GEMINI_VERIFIER_CONF_THRESHOLD'] ?? '') ?? 0.5,
+      verificationConfidenceThreshold:
+          double.tryParse(dotenv.env['GEMINI_VERIFIER_CONF_THRESHOLD'] ?? '') ??
+          0.5,
     );
     // Get user location
     final locationResult = await LocationService.getCurrentLocation();
     if (locationResult.isSuccess && locationResult.location != null) {
-      final genres = _controller.text.split(',').map((s) => s.trim()).where((s) => s.isNotEmpty).toList();
+      final genres = _controller.text
+          .split(',')
+          .map((s) => s.trim())
+          .where((s) => s.isNotEmpty)
+          .toList();
       Provider.of<AppState>(context, listen: false).setPreferredGenres(genres);
+
+      // Generate goals from user input
+      print(
+        '[DEBUG] Calling gemini.generateGoals with user input: \'${_controller.text}\'',
+      );
+      final goals = await gemini.generateGoals(_controller.text);
+      print('[DEBUG] Setting goals in AppState: $goals');
+      Provider.of<AppState>(context, listen: false).setGoals(goals);
+
+      // Generate activities as before
       final activities = await gemini.suggestActivities(
         locationResult.location!.latitude,
         locationResult.location!.longitude,
@@ -102,9 +118,9 @@ class _IntroScreenState extends State<IntroScreen>
     } else {
       setState(() => _loading = false);
       // Optionally show error
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Could not get location.')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Could not get location.')));
     }
   }
 
