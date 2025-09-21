@@ -66,8 +66,6 @@ class _MapScreenState extends State<MapScreen> {
         _userLocation = result.location;
       });
 
-      // Activities are already set from the landing page, no need to generate here
-
       setState(() => _loading = false);
     } else {
       setState(() {
@@ -109,7 +107,6 @@ class _MapScreenState extends State<MapScreen> {
       List<Widget> widgets = [];
 
       for (var activity in appState.activities) {
-        // For simplicity, assume each activity takes 1 hour
         final activityDuration = Duration(hours: 1);
 
         bool fitsFreeTime = _freeTimes!.any((slot) {
@@ -172,7 +169,6 @@ class _MapScreenState extends State<MapScreen> {
       );
     }
 
-    // Only render the map if we have a valid location
     if (_userLocation == null) {
       return Scaffold(
         appBar: AppBar(title: const Text("Location Error")),
@@ -201,10 +197,16 @@ class _MapScreenState extends State<MapScreen> {
     }
 
     return Scaffold(
-      // appBar: AppBar(title: const Text("Explore Activities")),
+      endDrawer: Drawer(
+        child: _freeTimes == null
+            ? const Center(child: Text("Loading free times..."))
+            : ListView(
+                padding: const EdgeInsets.all(8),
+                children: _buildActivitiesSidebar(appState),
+              ),
+      ),
       body: Stack(
         children: [
-          // Map widget at the bottom
           PlatformMapWidget(
             key: ValueKey(
               appState.activities.map((a) => '${a.lat},${a.lng}').join(),
@@ -214,7 +216,6 @@ class _MapScreenState extends State<MapScreen> {
             activities: appState.activities,
             onActivityTap: (a) => appState.completeActivity(a),
           ),
-          // Overlay gecko image above the map, but below all other UI
           IgnorePointer(
             child: Container(
               width: double.infinity,
@@ -227,22 +228,21 @@ class _MapScreenState extends State<MapScreen> {
               ),
             ),
           ),
+          // Drawer button in top-right
           Positioned(
-            top: 0,
-            left: 0,
-            bottom: 0,
-            width: 250, // sidebar width
-            child: Container(
-              color: Colors.white.withOpacity(0.9),
-              child: _freeTimes == null
-                  ? const Center(child: Text("Loading free times..."))
-                  : ListView(
-                      padding: const EdgeInsets.all(8),
-                      children: _buildActivitiesSidebar(appState),
-                    ),
+            top: 20,
+            right: 20,
+            child: Builder(
+              builder: (context) => FloatingActionButton(
+                heroTag: "drawer_btn",
+                child: const Icon(Icons.menu),
+                onPressed: () {
+                  Scaffold.of(context).openEndDrawer();
+                },
+              ),
             ),
-),
-          // Goals and Profile buttons in the top left
+          ),
+          // Goals and Profile buttons in top-left
           Positioned(
             top: 20,
             left: 20,
@@ -290,8 +290,6 @@ class _MapScreenState extends State<MapScreen> {
                   heroTag: "profile_btn",
                   child: const Icon(Icons.person),
                   onPressed: () {
-                    // For web, show the same popup as the user marker
-                    // This uses a dialog for simplicity
                     showDialog(
                       context: context,
                       builder: (context) {
@@ -450,7 +448,6 @@ class _MapScreenState extends State<MapScreen> {
                       ) ??
                       0.5,
                 );
-                // Always use all goals for variety
                 final nextActivities = await gemini.suggestActivities(
                   _userLocation!.latitude,
                   _userLocation!.longitude,
@@ -459,13 +456,11 @@ class _MapScreenState extends State<MapScreen> {
                       : appState.goals.map((g) => g.title).toList(),
                 );
                 setState(() {
-                  // Replace activities with new results
                   appState.setActivities(nextActivities);
                 });
               },
             ),
           ),
-          // (Goals and Activities numbers removed)
         ],
       ),
     );
