@@ -125,9 +125,34 @@ class GeminiService {
     double lng,
     List<String> genres,
   ) async {
-    // 1. Use Gemini to generate 3 activity types/categories only
-    final prompt = """
-Suggest 3 unique, real-world place types or categories (e.g., 'music store', 'garden center', 'cafe', 'park') that match these interests: ${genres.join(', ')}. Only output the place type or category, one per line. Do not include any place names, addresses, or extra text.
+    // Fallback/related place types for common themes
+    final Map<String, List<String>> relatedTypes = {
+      'cooking school': [
+        'culinary school',
+        'cooking class',
+        'restaurant',
+        'grocery store',
+        'food market',
+      ],
+      'grocery store': ['supermarket', 'food market', 'convenience store'],
+      'running track': ['track', 'stadium', 'park', 'gym'],
+      'music store': ['record store', 'music shop', 'instrument store'],
+      'thrift store': [
+        'second hand store',
+        'charity shop',
+        'consignment store',
+      ],
+      'garden center': ['plant nursery', 'garden shop', 'park'],
+      'art gallery': ['museum', 'art museum', 'exhibition'],
+      'bookstore': ['library', 'book shop'],
+      'playground': ['park', 'recreation area'],
+      'zoo': ['animal park', 'wildlife park'],
+      // Add more as needed
+    };
+    // 1. Use Gemini to generate 3 place types/categories only
+    final prompt =
+        """
+Suggest 3 unique, real-world place types or categories (such as 'park', 'cafe', 'museum', 'library', 'restaurant', 'garden center', 'music store', 'thrift store', 'farmers market', 'bookstore', 'art gallery', 'gym', 'beach', 'zoo', 'playground', etc.) that match these interests: ${genres.join(', ')}. Only output the place type or category, one per line. Do not include any organization names, place names, addresses, or extra text. Do not output things like 'community college' or 'YMCA'—use only generic place types that work with OpenStreetMap Nominatim search.
 """;
 
     final url = Uri.parse(
@@ -147,79 +172,96 @@ Suggest 3 unique, real-world place types or categories (e.g., 'music store', 'ga
       }),
     );
 
-    if (response.statusCode != 200) {
-      print("Gemini API Error: ${response.statusCode}");
-      return [];
-    }
-
-    final data = jsonDecode(response.body);
-    String text = "";
+    // Parse Gemini response for activity types
+    final responseData = jsonDecode(response.body);
+    String? text;
     try {
-      if (data is Map &&
-          data['candidates'] != null &&
-          data['candidates'] is List &&
-          data['candidates'].isNotEmpty) {
-        final cand = data['candidates'][0];
-        if (cand is Map) {
-          final content = cand['content'];
-          if (content is String) {
-            text = content;
-          } else if (content is Map &&
-              content['parts'] is List &&
-              content['parts'].isNotEmpty) {
-            final part0 = content['parts'][0];
-            if (part0 is Map && part0['text'] is String) text = part0['text'];
-          }
-        } else if (cand is String) {
-          text = cand;
-        }
-      } else if (data is Map && data['text'] is String) {
-        text = data['text'];
-      }
-    } catch (e) {
-      text = '';
+      text =
+          responseData['candidates'][0]['content']['parts'][0]['text']
+              as String?;
+    } catch (_) {
+      text = null;
     }
-    final activityTypes = text.trim().split('\n').map((s) => s.trim()).where((s) => s.isNotEmpty).toList();
+    final activityTypes = (text ?? '')
+        .split('\n')
+        .map((e) => e.trim())
+        .where((e) => e.isNotEmpty)
+        .toList();
     print('[DEBUG] Gemini activity types: $activityTypes');
 
-    // 2. For each activity type, use Google Places API to find a real place
+    // 2. For each place type, use OpenStreetMap Nominatim API to find a real place
     List<Activity> activities = [];
     for (int i = 0; i < activityTypes.length && activities.length < 3; i++) {
-      final type = activityTypes[i];
-      // Use Places API nearbysearch with keyword
-      final placesUrl = Uri.parse(
-        'https://maps.googleapis.com/maps/api/place/nearbysearch/json?location=$lat,$lng&radius=3000&keyword=${Uri.encodeComponent(type)}&key=$googleMapsApiKey',
-      );
-      final placesResp = await httpClient.get(placesUrl);
-      print('[DEBUG] Google Places API request for "$type": ${placesUrl.toString()}');
-      if (placesResp.statusCode == 200) {
-        final placesData = jsonDecode(placesResp.body);
-        print('[DEBUG] Google Places API response for "$type": ${placesResp.body}');
-        if (placesData['results'] != null && placesData['results'].isNotEmpty) {
-          final place = placesData['results'][0];
-          final name = place['name'] ?? type;
-          final address = place['vicinity'] ?? '';
-          final loc = place['geometry']?['location'];
-          final placeLat = loc != null ? (loc['lat']?.toDouble() ?? lat) : lat;
-          final placeLng = loc != null ? (loc['lng']?.toDouble() ?? lng) : lng;
-          activities.add(
-            Activity(
-              id: "${DateTime.now().millisecondsSinceEpoch}_${i}",
-              title: '$type at $name ($address)',
-              lat: placeLat,
-              lng: placeLng,
-              goalId: '',
-              category: type,
-              verified: true,
-              verificationConfidence: 1.0,
-              verificationSource: 'google_places',
-            ),
+      String type = activityTypes[i];
+      bool found = false;
+      List<String> triedTypes = [type];
+      List<String> tryTypes = [type, ...?relatedTypes[type.toLowerCase()]];
+      for (final tryType in tryTypes) {
+        // Build bounding box for ~3km radius
+        double delta = 0.03;
+        final minLat = lat - delta;
+        final maxLat = lat + delta;
+        final minLng = lng - delta;
+        final maxLng = lng + delta;
+        final nominatimUrl = Uri.parse(
+          'https://nominatim.openstreetmap.org/search?format=json&q=${Uri.encodeComponent(tryType)}&limit=5&viewbox=$minLng,$minLat,$maxLng,$maxLat&bounded=1',
+        );
+        final nominatimResp = await httpClient.get(
+          nominatimUrl,
+          headers: {'User-Agent': 'geko-app/1.0 (your@email.com)'},
+        );
+        print(
+          '[DEBUG] Nominatim API request for "$tryType": ${nominatimUrl.toString()}',
+        );
+        if (nominatimResp.statusCode == 200) {
+          final nominatimData = jsonDecode(nominatimResp.body);
+          print(
+            '[DEBUG] Nominatim API response for "$tryType": ${nominatimResp.body}',
           );
+          if (nominatimData is List && nominatimData.isNotEmpty) {
+            final place = nominatimData[0];
+            final name = place['display_name'] ?? tryType;
+            final placeLat = double.tryParse(place['lat'] ?? '') ?? lat;
+            final placeLng = double.tryParse(place['lon'] ?? '') ?? lng;
+            activities.add(
+              Activity(
+                id: "${DateTime.now().millisecondsSinceEpoch}_${i}",
+                title: '$type at $name',
+                lat: placeLat,
+                lng: placeLng,
+                goalId: '',
+                category: type,
+                verified: true,
+                verificationConfidence: 1.0,
+                verificationSource: 'nominatim',
+              ),
+            );
+            found = true;
+            break;
+          } else {
+            print('[DEBUG] Nominatim API returned no results for "$tryType"');
+          }
         } else {
-          print('[DEBUG] Google Places API returned no results for "$type"');
+          print(
+            '[DEBUG] Nominatim API error for "$tryType": status ${nominatimResp.statusCode}',
+          );
         }
-      } else {
-        print('[DEBUG] Google Places API error for "$type": status ${placesResp.statusCode}');
+      }
+      if (!found) {
+        // As a last resort, fallback to a generic local spot for this type
+        final offsetLat = lat + 0.02 * (i + 1) * (i.isEven ? 1 : -1);
+        final offsetLng = lng + 0.02 * (i + 1) * (i.isOdd ? 1 : -1);
+        final title = "$type at a local spot (location not verified)";
+        activities.add(
+          Activity(
+            id: "generic_fallback_${DateTime.now().millisecondsSinceEpoch}_$i",
+            title: title,
+            lat: offsetLat,
+            lng: offsetLng,
+            goalId: '',
+            category: type,
+          ),
+        );
       }
     }
     // If less than 3, fill with generic fallback
