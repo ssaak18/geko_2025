@@ -191,13 +191,86 @@ Suggest 3 unique, real-world place types or categories (such as 'park', 'cafe', 
 
     // 2. For each place type, use OpenStreetMap Nominatim API to find a real place
     List<Activity> activities = [];
-    for (int i = 0; i < activityTypes.length && activities.length < 3; i++) {
-      String type = activityTypes[i];
-      bool found = false;
-      List<String> triedTypes = [type];
+    // Guarantee 3 real, on-theme activities by broadening search if needed
+    final Map<String, List<String>> broaderTypes = {
+      'cooking school': ['restaurant', 'food market', 'supermarket'],
+      'museum': ['art gallery', 'exhibition', 'library'],
+      'thrift store': ['market', 'shopping mall'],
+      'playground': ['park', 'recreation area'],
+      'zoo': ['animal park', 'wildlife park'],
+      'music store': ['shopping mall', 'music venue'],
+      'garden center': ['park', 'nature reserve'],
+      'bookstore': ['library', 'shopping mall'],
+      'gym': ['fitness center', 'sports club'],
+      // Add more as needed
+    };
+    final List<String> fallbackPopularTypes = [
+      'park',
+      'cafe',
+      'museum',
+      'library',
+      'restaurant',
+      'beach',
+      'art gallery',
+      'shopping mall',
+      'market',
+      'nature reserve',
+      'zoo',
+      'playground',
+      'gym',
+      'bookstore',
+      'music venue',
+      'food market',
+      'supermarket',
+      'sports club',
+      'recreation area',
+      'historic site',
+      'cinema',
+      'swimming pool',
+      'fitness center',
+      'stadium',
+      'trail',
+      'bike shop',
+      'climbing gym',
+      'gallery',
+      'exhibition',
+      'animal park',
+      'garden',
+      'botanical garden',
+      'farmers market',
+      'thrift store',
+      'record store',
+      'music shop',
+      'plant nursery',
+      'charity shop',
+      'consignment store',
+      'convenience store',
+      'restaurant',
+      'food market',
+      'culinary school',
+      'cooking class',
+    ];
+    Set<String> usedTypes = {};
+    int idx = 0;
+    int fallbackIdx = 0;
+    int maxAttempts = 50;
+    while (activities.length < 3 && maxAttempts-- > 0) {
+      String type = idx < activityTypes.length ? activityTypes[idx] : '';
+      if (type.isEmpty && fallbackIdx < fallbackPopularTypes.length) {
+        type = fallbackPopularTypes[fallbackIdx++];
+      } else if (type.isEmpty) {
+        break;
+      }
+      if (usedTypes.contains(type.toLowerCase())) {
+        idx++;
+        continue;
+      }
+      usedTypes.add(type.toLowerCase());
       List<String> tryTypes = [type, ...?relatedTypes[type.toLowerCase()]];
+      bool found = false;
       for (final tryType in tryTypes) {
-        // Build bounding box for ~3km radius
+        if (usedTypes.contains(tryType.toLowerCase())) continue;
+        usedTypes.add(tryType.toLowerCase());
         double delta = 0.03;
         final minLat = lat - delta;
         final maxLat = lat + delta;
@@ -223,62 +296,42 @@ Suggest 3 unique, real-world place types or categories (such as 'park', 'cafe', 
             final name = place['display_name'] ?? tryType;
             final placeLat = double.tryParse(place['lat'] ?? '') ?? lat;
             final placeLng = double.tryParse(place['lon'] ?? '') ?? lng;
-            activities.add(
-              Activity(
-                id: "${DateTime.now().millisecondsSinceEpoch}_${i}",
-                title: '$type at $name',
-                lat: placeLat,
-                lng: placeLng,
-                goalId: '',
-                category: type,
-                verified: true,
-                verificationConfidence: 1.0,
-                verificationSource: 'nominatim',
-              ),
+            final isDuplicate = activities.any(
+              (a) =>
+                  a.title == '$type at $name' &&
+                  a.lat == placeLat &&
+                  a.lng == placeLng,
             );
-            found = true;
-            break;
-          } else {
-            print('[DEBUG] Nominatim API returned no results for "$tryType"');
+            if (!isDuplicate) {
+              activities.add(
+                Activity(
+                  id: "${DateTime.now().millisecondsSinceEpoch}_${activities.length}",
+                  title: '$type at $name',
+                  lat: placeLat,
+                  lng: placeLng,
+                  goalId: '',
+                  category: type,
+                  verified: true,
+                  verificationConfidence: 1.0,
+                  verificationSource: 'nominatim',
+                ),
+              );
+              found = true;
+              break;
+            }
           }
-        } else {
-          print(
-            '[DEBUG] Nominatim API error for "$tryType": status ${nominatimResp.statusCode}',
-          );
         }
       }
       if (!found) {
-        // As a last resort, fallback to a generic local spot for this type
-        final offsetLat = lat + 0.02 * (i + 1) * (i.isEven ? 1 : -1);
-        final offsetLng = lng + 0.02 * (i + 1) * (i.isOdd ? 1 : -1);
-        final title = "$type at a local spot (location not verified)";
-        activities.add(
-          Activity(
-            id: "generic_fallback_${DateTime.now().millisecondsSinceEpoch}_$i",
-            title: title,
-            lat: offsetLat,
-            lng: offsetLng,
-            goalId: '',
-            category: type,
-          ),
-        );
+        // Try broader types if available
+        final broader = broaderTypes[type.toLowerCase()] ?? [];
+        for (final b in broader) {
+          if (!usedTypes.contains(b.toLowerCase())) {
+            activityTypes.add(b);
+          }
+        }
       }
-    }
-    // If less than 3, fill with generic fallback
-    for (int i = activities.length; i < 3; i++) {
-      final offsetLat = lat + 0.02 * (i + 1) * (i.isEven ? 1 : -1);
-      final offsetLng = lng + 0.02 * (i + 1) * (i.isOdd ? 1 : -1);
-      final title = "Explore a local spot (location not verified) ${i}";
-      activities.add(
-        Activity(
-          id: "generic_fallback_${DateTime.now().millisecondsSinceEpoch}_$i",
-          title: title,
-          lat: offsetLat,
-          lng: offsetLng,
-          goalId: '',
-          category: 'Other',
-        ),
-      );
+      idx++;
     }
     // Ensure all returned activities have distinct coordinates (nudge duplicates)
     const minSeparation = 0.0001; // ~11m
