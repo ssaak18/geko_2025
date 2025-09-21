@@ -22,31 +22,51 @@ class _MapScreenState extends State<MapScreen> {
   String _errorMessage = '';
   GoogleCalendarService _calendarService = GoogleCalendarService();
   List<Map<String, DateTime>>? _freeTimes;
+  List activities = [];
 
-  Future<void> _loadFreeTimes() async {
+  Future<void> _loadFreeTimesAndActivities() async {
     final token = await _calendarService.signInAndGetToken();
     if (token == null) {
       print("Google Sign-In failed or canceled.");
       return;
     }
 
-    print("Google Sign-In succeeded. Token: $token");
-
     final now = DateTime.now();
-    final weekLater = now.add(Duration(days: 7));
+    final weekLater = now.add(const Duration(days: 7));
 
     final busy = await _calendarService.fetchBusyTimes(token, now, weekLater);
     final free = _calendarService.computeFreeTimes(
       busy,
       now,
-      now.add(Duration(hours: 24)),
+      now.add(const Duration(hours: 24)),
     );
 
     setState(() {
       _freeTimes = free;
     });
 
-    // Print free times for debug
+    if (_freeTimes != null && _freeTimes!.isNotEmpty && _userLocation != null) {
+      final appState = Provider.of<AppState>(context, listen: false);
+      final gemini = GeminiService(
+        useGeminiLocationVerifier: true,
+        verificationConfidenceThreshold: double.tryParse(
+              dotenv.env['GEMINI_VERIFIER_CONF_THRESHOLD'] ?? '',
+            ) ??
+            0.5,
+      );
+      final nextActivities = await gemini.suggestActivities(
+        _userLocation!.latitude,
+        _userLocation!.longitude,
+        appState.preferredGenres.isNotEmpty
+            ? appState.preferredGenres
+            : appState.goals.map((g) => g.title).toList(),
+      );
+      setState(() {
+        activities = nextActivities;
+      });
+    }
+
+    // Debug print
     print("Free time slots:");
     if (_freeTimes != null && _freeTimes!.isNotEmpty) {
       for (var slot in _freeTimes!) {
@@ -67,6 +87,9 @@ class _MapScreenState extends State<MapScreen> {
       });
 
       setState(() => _loading = false);
+
+      // Now load free times after we have location
+      _loadFreeTimesAndActivities();
     } else {
       setState(() {
         _errorMessage = result.errorMessage ?? 'Unknown location error';
@@ -79,7 +102,30 @@ class _MapScreenState extends State<MapScreen> {
   void initState() {
     super.initState();
     _getLocation();
-    _loadFreeTimes();
+  }
+
+  List<Widget> _buildActivitiesSidebar(AppState appState) {
+    if (activities.isEmpty) return [const Text("No activities available")];
+
+    List<Widget> widgets = [];
+
+    for (var activity in activities) {
+      final capitalizedTitle = activity.title.isNotEmpty
+          ? activity.title[0].toUpperCase() + activity.title.substring(1)
+          : activity.title;
+
+      widgets.add(Card(
+        child: ListTile(
+          title: Text(capitalizedTitle),
+          subtitle: Text(activity.category),
+          onTap: () {
+            // Optionally center map on activity
+          },
+        ),
+      ));
+    }
+
+    return widgets;
   }
 
   @override
@@ -101,40 +147,6 @@ class _MapScreenState extends State<MapScreen> {
       );
     }
 
-    List<Widget> _buildActivitiesSidebar(AppState appState) {
-      if (_freeTimes == null || _freeTimes!.isEmpty) return [Text("No free times")];
-
-      List<Widget> widgets = [];
-
-      for (var activity in appState.activities) {
-        final activityDuration = Duration(hours: 1);
-
-        bool fitsFreeTime = _freeTimes!.any((slot) {
-          final start = slot['start']!;
-          final end = slot['end']!;
-          return end.difference(start) >= activityDuration;
-        });
-
-        if (fitsFreeTime) {
-          widgets.add(Card(
-            child: ListTile(
-              title: Text(activity.title),
-              subtitle: Text("${activity.category}"),
-              onTap: () {
-                // Optionally center map on activity
-              },
-            ),
-          ));
-        }
-      }
-
-      if (widgets.isEmpty) {
-        widgets.add(const Text("No activities fit your free time"));
-      }
-
-      return widgets;
-    }
-
     if (_errorMessage.isNotEmpty) {
       return Scaffold(
         appBar: AppBar(title: const Text("Location Error")),
@@ -142,17 +154,17 @@ class _MapScreenState extends State<MapScreen> {
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Icon(Icons.error_outline, size: 64, color: Colors.red),
-              SizedBox(height: 16),
+              const Icon(Icons.error_outline, size: 64, color: Colors.red),
+              const SizedBox(height: 16),
               Padding(
-                padding: EdgeInsets.symmetric(horizontal: 20),
+                padding: const EdgeInsets.symmetric(horizontal: 20),
                 child: Text(
                   _errorMessage,
                   textAlign: TextAlign.center,
-                  style: TextStyle(fontSize: 16),
+                  style: const TextStyle(fontSize: 16),
                 ),
               ),
-              SizedBox(height: 16),
+              const SizedBox(height: 16),
               ElevatedButton(
                 onPressed: () {
                   setState(() {
@@ -161,7 +173,7 @@ class _MapScreenState extends State<MapScreen> {
                   });
                   _getLocation();
                 },
-                child: Text('Retry'),
+                child: const Text('Retry'),
               ),
             ],
           ),
@@ -176,10 +188,10 @@ class _MapScreenState extends State<MapScreen> {
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Icon(Icons.location_off, size: 64, color: Colors.orange),
-              SizedBox(height: 16),
-              Text('Unable to get your location'),
-              SizedBox(height: 16),
+              const Icon(Icons.location_off, size: 64, color: Colors.orange),
+              const SizedBox(height: 16),
+              const Text('Unable to get your location'),
+              const SizedBox(height: 16),
               ElevatedButton(
                 onPressed: () {
                   setState(() {
@@ -188,7 +200,7 @@ class _MapScreenState extends State<MapScreen> {
                   });
                   _getLocation();
                 },
-                child: Text('Try Again'),
+                child: const Text('Try Again'),
               ),
             ],
           ),
@@ -202,7 +214,20 @@ class _MapScreenState extends State<MapScreen> {
             ? const Center(child: Text("Loading free times..."))
             : ListView(
                 padding: const EdgeInsets.all(8),
-                children: _buildActivitiesSidebar(appState),
+                children: [
+                  const Padding(
+                    padding: EdgeInsets.symmetric(vertical: 16.0),
+                    child: Text(
+                      "In Your Free Time...",
+                      style: TextStyle(
+                        fontSize: 22,
+                        fontWeight: FontWeight.bold,
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
+                  ),
+                  ..._buildActivitiesSidebar(appState),
+                ],
               ),
       ),
       body: Stack(
@@ -442,8 +467,7 @@ class _MapScreenState extends State<MapScreen> {
                 final appState = Provider.of<AppState>(context, listen: false);
                 final gemini = GeminiService(
                   useGeminiLocationVerifier: true,
-                  verificationConfidenceThreshold:
-                      double.tryParse(
+                  verificationConfidenceThreshold: double.tryParse(
                         dotenv.env['GEMINI_VERIFIER_CONF_THRESHOLD'] ?? '',
                       ) ??
                       0.5,
